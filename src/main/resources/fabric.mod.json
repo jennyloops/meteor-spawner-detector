@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "spawner-detector",
+  "version": "${version}",
+  "name": "Spawner Detector",
+  "description": "Detects underground mob spawners and marks their chunk with a blue beam.",
+  "authors": ["jennyloops"],
+  "contact": {},
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "meteor": [
+      "com.spawnerdetector.SpawnerDetectorAddon"
+    ]
+  },
+  "mixins": [],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "1.21.1",
+    "meteor-client": "*"
+  }
+}
