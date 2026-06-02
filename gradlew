@@ -129,27 +129,9 @@ if $msys ; then
     APP_HOME=`expr "$APP_HOME" : '\(.*\)'`
 fi
 
-trap cleanup EXIT
-cleanup() {
-    test -n "$pid" && kill -TERM $pid
-}
-
-# Start the Gradle daemon in the background.
-pid=""
-if [ "$1" != "--" ] ; then
-    if [ "$1" != "stop" ] && [ "$1" != "--info" ] ; then
-        pid=$("$JAVACMD" \
-            $DEFAULT_JVM_OPTS \
-            -classpath "$CLASSPATH" \
-            org.gradle.wrapper.GradleWrapperMain \
-            "$@")
-    else
-        exec "$JAVACMD" \
-            $DEFAULT_JVM_OPTS \
-            -classpath "$CLASSPATH" \
-            org.gradle.wrapper.GradleWrapperMain \
-            "$@"
-    fi
-fi
-
-wait $pid
+# Execute Gradle wrapper
+exec "$JAVACMD" \
+    $DEFAULT_JVM_OPTS \
+    -classpath "$CLASSPATH" \
+    org.gradle.wrapper.GradleWrapperMain \
+    "$@"
