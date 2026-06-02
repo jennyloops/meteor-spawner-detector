@@ -14,9 +14,9 @@ import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.MobSpawnerBlockEntity;
-import net.minecraft.block.entity.TrialSpawnerBlockEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
+import net.minecraft.world.chunk.WorldChunk;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -151,18 +151,21 @@ public class SpawnerDetector extends Module {
         int radius = chunkRadius.get();
         int yCap = maxY.get();
 
-        for (BlockEntity be : mc.world.iterateBlockEntities()) {
-            // Only detect MobSpawnerBlockEntity, skip TrialSpawnerBlockEntity
-            if (!(be instanceof MobSpawnerBlockEntity)) continue;
-            if (be instanceof TrialSpawnerBlockEntity) continue;
+        for (int cx = playerChunk.x - radius; cx <= playerChunk.x + radius; cx++) {
+            for (int cz = playerChunk.z - radius; cz <= playerChunk.z + radius; cz++) {
+                ChunkPos chunkPos = new ChunkPos(cx, cz);
+                if (!mc.world.isChunkLoaded(chunkPos)) continue;
 
-            BlockPos pos = be.getPos();
-            if (pos.getY() > yCap) continue;
+                WorldChunk chunk = mc.world.getChunk(cx, cz);
+                for (BlockEntity be : chunk.getBlockEntities().values()) {
+                    if (!(be instanceof MobSpawnerBlockEntity)) continue;
 
-            ChunkPos cp = new ChunkPos(pos);
-            if (Math.abs(cp.x - playerChunk.x) > radius || Math.abs(cp.z - playerChunk.z) > radius) continue;
+                    BlockPos pos = be.getPos();
+                    if (pos.getY() > yCap) continue;
 
-            found.computeIfAbsent(cp, k -> new HashSet<>()).add(pos.toImmutable());
+                    found.computeIfAbsent(chunkPos, k -> new HashSet<>()).add(pos.toImmutable());
+                }
+            }
         }
     }
 
@@ -193,29 +196,27 @@ public class SpawnerDetector extends Module {
             }
 
             if (renderBeam.get()) {
-                for (BlockPos spawnerPos : entry.getValue()) {
-                    double cx = spawnerPos.getX() + 0.5;
-                    double cz = spawnerPos.getZ() + 0.5;
-                    
-                    float widthFactor = beamWidth.get() / 100f;
-                    
-                    if (beamPulse.get()) {
-                        long time = System.currentTimeMillis();
-                        float pulse = (float) Math.sin(time / (1000f / pulseSpeed.get())) * 0.3f + 0.7f;
-                        widthFactor *= pulse;
-                    }
-                    
-                    double halfWidth = 0.25 * widthFactor;
+                int lowestSpawnerY = entry.getValue().stream()
+                    .mapToInt(BlockPos::getY)
+                    .min()
+                    .orElse(bottomY);
 
-                    event.renderer.box(
-                        cx - halfWidth, spawnerPos.getY(), cz - halfWidth,
-                        cx + halfWidth, topY, cz + halfWidth,
-                        beamColor.get(),
-                        beamColor.get(),
-                        ShapeMode.Both,
-                        0
-                    );
+                float alphaFactor = beamWidth.get() / 100f;
+                if (beamPulse.get()) {
+                    long time = System.currentTimeMillis();
+                    alphaFactor *= (float) Math.sin(time / (1000f / pulseSpeed.get())) * 0.3f + 0.7f;
                 }
+
+                SettingColor beam = new SettingColor(beamColor.get());
+                beam.a = (int) (beam.a * alphaFactor);
+
+                event.renderer.box(
+                    minX, lowestSpawnerY, minZ,
+                    maxX, topY, maxZ,
+                    beam, beam,
+                    ShapeMode.Both,
+                    0
+                );
             }
         }
     }
